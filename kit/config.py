@@ -165,43 +165,44 @@ def save_default_instructions() -> None:
 config_default = {
     "version": "2.0",
     "language": "de",
-    # Pro Modus: provider, model, max_tokens, reasoning_effort
+    # Pro Modus: provider (codex|anthropic|deepseek), model, max_tokens, reasoning_effort
+    # Default: ChatGPT-Abo via Codex-Login, kleinstes Modell
     "modes": {
         "normalchat": {
-            "provider": "deepseek",
-            "model": "deepseek-v4-flash",
-            "max_tokens": 4096,
-            "reasoning_effort": "none",
-        },
-        "codex": {
-            "provider": "anthropic",
-            "model": "claude-sonnet-4-6",
+            "provider": "codex",
+            "model": "gpt-6-luna",
             "max_tokens": 4096,
             "reasoning_effort": "low",
         },
+        "codex": {
+            "provider": "codex",
+            "model": "gpt-6-luna",
+            "max_tokens": 4096,
+            "reasoning_effort": "medium",
+        },
         "email": {
-            "provider": "deepseek",
-            "model": "deepseek-v4-flash",
+            "provider": "codex",
+            "model": "gpt-6-luna",
             "max_tokens": 2048,
-            "reasoning_effort": "none",
+            "reasoning_effort": "low",
         },
         "email_advanced": {
-            "provider": "deepseek",
-            "model": "deepseek-v4-pro",
+            "provider": "codex",
+            "model": "gpt-6-luna",
             "max_tokens": 4096,
-            "reasoning_effort": "none",
+            "reasoning_effort": "low",
         },
         "email_pro": {
-            "provider": "deepseek",
-            "model": "deepseek-v4-pro",
+            "provider": "codex",
+            "model": "gpt-6-luna",
             "max_tokens": 4096,
-            "reasoning_effort": "none",
+            "reasoning_effort": "low",
         },
         "translate": {
-            "provider": "deepseek",
-            "model": "deepseek-v4-flash",
+            "provider": "codex",
+            "model": "gpt-6-luna",
             "max_tokens": 2048,
-            "reasoning_effort": "none",
+            "reasoning_effort": "low",
         },
     },
     "chat_path": "",  # Leer = Default-Pfad ~/.config/KIterminal/KITchats/
@@ -237,7 +238,8 @@ def _migrate_v1_to_v2(old_config: dict) -> dict:
             continue
         model = old_config.get(old_key, config_default["modes"][new_key]["model"])
         modes[new_key] = {
-            "provider": "anthropic",  # v1 war immer Anthropic
+            # v1 war immer Anthropic; fehlende Modi bekommen den v2-Default
+            "provider": "anthropic" if old_key in old_config else config_default["modes"][new_key]["provider"],
             "model": model,
             "max_tokens": config_default["modes"][new_key]["max_tokens"],
             "reasoning_effort": config_default["modes"][new_key]["reasoning_effort"],

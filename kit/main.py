@@ -2,7 +2,7 @@
 """
 KIterminal — Terminal-KI-Tool für schnelle Aufgaben.
 
-Multi-Provider: Anthropic + DeepSeek
+Multi-Provider: Anthropic + DeepSeek + OpenAI Codex (ChatGPT-Login)
 Modi: chat, codex, mail (-m/-ma/-mp), translate (-t)
 Features: Streaming, Pipe-Support, Clipboard, Chat-History
 """
@@ -24,14 +24,15 @@ import pyperclip
 
 from kit.config import loadconfig, init_config, get_mode_config
 from kit.chat_history import save_chat, load_chat, show_chat_selection_menu
-from kit import chat_history as ch
-from kit.providers import get_client, get_provider_name
+from kit import __version__, chat_history as ch
+from kit.codex_auth import auth_file
+from kit.providers import stream_text, get_provider_name, API_ERRORS
 
 AUTHOR = "JLI-Software"
-VERSION = "0.9.1"
+VERSION = __version__
 LICENSE = "MIT"
 ANTHROPIC_VERSION = anthropic.__version__
-DESCRIPTION = "KIterminal — Schlankes KI-CLI-Tool. Multi-Provider: Anthropic + DeepSeek."
+DESCRIPTION = "KIterminal — Schlankes KI-CLI-Tool. Multi-Provider: Anthropic + DeepSeek + OpenAI Codex."
 
 # ── CLI-Parser ────────────────────────────────────────────────────────────
 
@@ -69,11 +70,12 @@ Konfiguration:
   Instruction-Dateien: ~/.config/KIterminal/instructions/
   Config-Datei:        ~/.config/KIterminal/config.json
 
-Umgebungsvariablen:
+Provider-Login:
+  codex                   ChatGPT-Abo, einmal 'codex login' (Codex CLI)
   ANTHROPIC_API_KEY       Anthropic API-Key
   DEEPSEEK_API_KEY        DeepSeek API-Key
 
-Mehr Infos: https://github.com/vikingjunior12/kit
+Mehr Infos: https://github.com/jli-software/kit
     """,
     formatter_class=argparse.RawDescriptionHelpFormatter,
 )
@@ -271,27 +273,10 @@ def handle_api_error(e: Exception) -> None:
         console.print("[red]✗ Rate-Limit erreicht – warte einen Moment[/red]")
     elif isinstance(e, anthropic.APIStatusError):
         console.print(f"[red]✗ API-Fehler {e.status_code}: {e}[/red]")
+    elif isinstance(e, API_ERRORS):
+        console.print(f"[red]✗ {e}[/red]")
     else:
         console.print(f"[red]✗ Unerwarteter Fehler: {e}[/red]")
-
-
-def get_response_text(response) -> str:
-    """Extrahiert Text aus einer Anthropic-Response (nur non-streaming)."""
-    if response.stop_reason == "refusal":
-        console.print("[yellow]! Anfrage abgelehnt[/yellow]")
-        return ""
-    text_blocks = [block.text for block in response.content if block.type == "text"]
-    return "\n\n".join(text_blocks) if text_blocks else ""
-
-
-def build_effort_params(reasoning_effort: str) -> dict:
-    """Erstellt thinking/output_config-Parameter fuer Adaptive Thinking."""
-    if reasoning_effort in ("low", "medium", "high"):
-        return {
-            "thinking": {"type": "adaptive"},
-            "output_config": {"effort": reasoning_effort},
-        }
-    return {}
 
 
 def build_piped_message(question: str, stdin_content: str) -> str:
@@ -309,43 +294,38 @@ def _call_api(mode: str, messages: list[dict], system: str, stream: bool = True)
     mode_cfg = get_mode_config(config, mode)
     provider = mode_cfg.get("provider", "anthropic")
     model = mode_cfg.get("model", "claude-sonnet-4-6")
-    max_tokens = mode_cfg.get("max_tokens", 4096)
-    reasoning_effort = mode_cfg.get("reasoning_effort", "none")
 
     try:
-        client = get_client(provider)
+        chunks = stream_text(
+            provider,
+            model=model,
+            system=system,
+            messages=messages,
+            max_tokens=mode_cfg.get("max_tokens", 4096),
+            reasoning_effort=mode_cfg.get("reasoning_effort", "none"),
+        )
     except ValueError as e:
         console.print(f"[red]✗ {e}[/red]")
         sys.exit(1)
 
-    params = dict(
-        model=model,
-        max_tokens=max_tokens,
-        system=system,
-        messages=messages,
-        **build_effort_params(reasoning_effort),
-    )
-
+    full_text: list[str] = []
     if stream:
-        full_text: list[str] = []
         try:
             with Live(Markdown(""), console=console, refresh_per_second=10,
                       vertical_overflow="visible") as live:
-                with client.messages.stream(**params) as s:
-                    for text in s.text_stream:
-                        full_text.append(text)
-                        live.update(Markdown("".join(full_text)))
+                for text in chunks:
+                    full_text.append(text)
+                    live.update(Markdown("".join(full_text)))
         except KeyboardInterrupt:
             # Sauberer Abbruch – Live-Display wird automatisch geschlossen,
             # teilweise gestreamter Text wird trotzdem gespeichert
             if full_text:
                 console.print()
             raise
-        return "".join(full_text)
     else:
         with console.status(f"[bold green]{get_provider_name(provider)}/{model} …[/bold green]"):
-            response = client.messages.create(**params)
-        return get_response_text(response)
+            full_text.extend(chunks)
+    return "".join(full_text)
 
 
 def normalchat(userfrage: str) -> None:
@@ -359,8 +339,7 @@ def normalchat(userfrage: str) -> None:
         )
         chat_history.append({"role": "assistant", "content": response_text})
         copyline(response_text)
-    except (anthropic.APIConnectionError, anthropic.AuthenticationError,
-            anthropic.RateLimitError, anthropic.APIStatusError) as e:
+    except API_ERRORS as e:
         handle_api_error(e)
         chat_history.pop()
 
@@ -379,8 +358,7 @@ def codex(userfrage: str) -> None:
         )
         chat_history.append({"role": "assistant", "content": response_text})
         copyline(response_text)
-    except (anthropic.APIConnectionError, anthropic.AuthenticationError,
-            anthropic.RateLimitError, anthropic.APIStatusError) as e:
+    except API_ERRORS as e:
         handle_api_error(e)
         chat_history.pop()
 
@@ -396,8 +374,7 @@ def mail_correct(userfrage: str, mode: str = "email") -> None:
         )
         copyline(response_text)
         print(response_text)
-    except (anthropic.APIConnectionError, anthropic.AuthenticationError,
-            anthropic.RateLimitError, anthropic.APIStatusError) as e:
+    except API_ERRORS as e:
         handle_api_error(e)
 
 
@@ -426,8 +403,7 @@ def translate(userfrage: str) -> None:
         )
         copyline(response_text)
         print(response_text)
-    except (anthropic.APIConnectionError, anthropic.AuthenticationError,
-            anthropic.RateLimitError, anthropic.APIStatusError) as e:
+    except API_ERRORS as e:
         handle_api_error(e)
 
 
@@ -597,6 +573,7 @@ def main() -> None:
         console.print(f"[bold cyan]Autor:[/bold cyan]        [yellow]{AUTHOR}[/yellow]")
         console.print(f"[bold cyan]Lizenz:[/bold cyan]        [blue]{LICENSE}[/blue]")
         console.print(f"[bold cyan]SDK:[/bold cyan]           [magenta]anthropic {ANTHROPIC_VERSION}[/magenta]")
+        console.print(f"[bold cyan]Codex-Login:[/bold cyan]   [magenta]{auth_file()}[/magenta]")
         console.print(f"[bold cyan]Beschreibung:[/bold cyan]  [magenta]{DESCRIPTION}[/magenta]")
 
     elif args.mail:
@@ -633,9 +610,14 @@ def main() -> None:
                          initial_message=msg)
 
 
-if __name__ == "__main__":
+def run() -> None:
+    """Entry-Point (pip/pipx und Binary): main() mit sauberem Ctrl+C."""
     try:
         main()
     except KeyboardInterrupt:
         console.print("\n[yellow]Beendet[/yellow]")
         os._exit(0)
+
+
+if __name__ == "__main__":
+    run()

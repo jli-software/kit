@@ -1,7 +1,7 @@
 [project]
 name = "kit"
-version = "0.9.1"
-description = "KIterminal — Schlankes KI-CLI-Tool mit Multi-Provider-Support (Anthropic + DeepSeek). Live-Streaming, Pipe-Support, Clipboard."
+version = "0.10.0"
+description = "KIterminal — Schlankes KI-CLI-Tool mit Multi-Provider-Support (OpenAI Codex via ChatGPT-Login + Anthropic + DeepSeek). Live-Streaming, Pipe-Support, Clipboard."
 authors = [
     {name = "JLI-Software"}
 ]
@@ -10,6 +10,7 @@ readme = "README.md"
 requires-python = ">=3.13,<4.0"
 dependencies = [
     "anthropic (>=0.83.0,<1.0.0)",
+    "httpx (>=0.27.0,<1.0.0)",
     "rich (>=14.2.0,<16.0.0)",
     "pyperclip (>=1.11.0,<2.0.0)",
     "prompt-toolkit (>=3.0.52,<4.0.0)",
@@ -17,6 +18,9 @@ dependencies = [
 
 [project.scripts]
 kit = "kit:main"
+
+[project.urls]
+Repository = "https://github.com/jli-software/kit"
 
 
 [build-system]
@@ -31,4 +35,5 @@ packages = [
 [dependency-groups]
 dev = [
     "pyinstaller (>=6.16.0,<7.0.0)",
+    "pytest (>=8.0.0)",
 ]
