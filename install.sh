@@ -30,11 +30,6 @@ esac
 [ "$os" = macos ] && [ "$arch" = x64 ] && fail "Für Intel-Macs gibt es kein Binary — 'pipx install git+https://github.com/$REPO' nehmen."
 
 asset="kit-$os-$arch"
-if [ "$VERSION" = latest ]; then
-  base="https://github.com/$REPO/releases/latest/download"
-else
-  base="https://github.com/$REPO/releases/download/$VERSION"
-fi
 
 if command -v curl >/dev/null 2>&1; then
   fetch() { curl -fsSL "$1" -o "$2"; }
@@ -47,6 +42,16 @@ fi
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 
+# Neuste Version über die API auflösen: die "latest/download"-Links cached
+# GitHub pro Datei, kurz nach einem Release können sie gemischt alt/neu zeigen.
+if [ "$VERSION" = latest ]; then
+  fetch "https://api.github.com/repos/$REPO/releases/latest" "$tmp/latest.json" \
+    || fail "Neuste Version nicht abrufbar."
+  VERSION="$(sed -n 's/.*"tag_name": *"\([^"]*\)".*/\1/p' "$tmp/latest.json" | head -n 1)"
+  [ -n "$VERSION" ] || fail "Neuste Version nicht gefunden."
+fi
+base="https://github.com/$REPO/releases/download/$VERSION"
+
 say "kit ($VERSION) für $os-$arch wird geladen …"
 fetch "$base/$asset" "$tmp/kit" || fail "Download fehlgeschlagen: $base/$asset"
 fetch "$base/SHA256SUMS" "$tmp/SHA256SUMS" || fail "Prüfsummen nicht gefunden."
@@ -57,7 +62,9 @@ if command -v sha256sum >/dev/null 2>&1; then
 else
   actual="$(shasum -a 256 "$tmp/kit" | awk '{ print $1 }')"
 fi
-[ -n "$expected" ] && [ "$expected" = "$actual" ] || fail "Prüfsumme stimmt nicht — Installation abgebrochen."
+if [ -z "$expected" ] || [ "$expected" != "$actual" ]; then
+  fail "Prüfsumme stimmt nicht — Installation abgebrochen."
+fi
 
 mkdir -p "$INSTALL_DIR"
 chmod +x "$tmp/kit"

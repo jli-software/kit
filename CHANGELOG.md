@@ -6,7 +6,7 @@ Alle nennenswerten Änderungen an KIterminal (kit) werden in dieser Datei dokume
 
 ### Hinzugefügt
 - **Codex-Provider (`"provider": "codex"`):** nutzt das ChatGPT-Abo statt eines API-Keys. kit verwendet den Login von Codex CLI (`~/.codex/auth.json`, `$CODEX_HOME`), erneuert abgelaufene Tokens selbst und schreibt sie zurück. Spricht die Responses-API auf `chatgpt.com/backend-api/codex` per Streaming an.
-- **Online-Installer:** `install.sh` (Linux/macOS, `curl … | sh`) und `install.ps1` (Windows, `irm … | iex`). Sie laden das passende Release-Binary, prüfen die SHA256-Summe und legen kit in den PATH.
+- **Online-Installer:** `install.sh` (Linux/macOS, `curl … | sh`) und `install.ps1` (Windows, `irm … | iex`). Sie laden das passende Release-Binary, lösen die neuste Version über die GitHub-API auf (die `latest/download`-Links cached GitHub pro Datei), prüfen die SHA256-Summe und legen kit in den PATH.
 - **CI:** Tests auf Linux, Windows und macOS bei jedem Push, `shellcheck` und ein PowerShell-Syntax-Check für die Installer.
 - **Release-Workflow:** ein Tag `v*` baut Binaries für Linux x64/arm64, Windows x64 und macOS arm64 und erstellt das GitHub-Release mit `SHA256SUMS` und dem CHANGELOG-Abschnitt.
 - Offline-Tests für den Codex-Provider (`tests/`)

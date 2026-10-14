@@ -12,11 +12,13 @@ $ProgressPreference = 'SilentlyContinue'   # Invoke-WebRequest ist sonst sehr la
 $repo = 'jli-software/kit'
 $asset = 'kit-windows-x64.exe'
 $installDir = if ($env:KIT_INSTALL_DIR) { $env:KIT_INSTALL_DIR } else { Join-Path $env:LOCALAPPDATA 'Programs\kit' }
-$version = if ($env:KIT_VERSION) { $env:KIT_VERSION } else { 'latest' }
-$base = if ($version -eq 'latest') { "https://github.com/$repo/releases/latest/download" }
-        else { "https://github.com/$repo/releases/download/$version" }
-
 if (-not [Environment]::Is64BitOperatingSystem) { throw 'Nur 64-Bit-Windows wird unterstützt.' }
+
+# Neuste Version über die API auflösen: die "latest/download"-Links cached
+# GitHub pro Datei, kurz nach einem Release können sie gemischt alt/neu zeigen.
+$version = if ($env:KIT_VERSION) { $env:KIT_VERSION }
+           else { (Invoke-RestMethod "https://api.github.com/repos/$repo/releases/latest").tag_name }
+$base = "https://github.com/$repo/releases/download/$version"
 
 $tmp = Join-Path ([IO.Path]::GetTempPath()) ("kit-" + [guid]::NewGuid())
 New-Item -ItemType Directory -Path $tmp | Out-Null
