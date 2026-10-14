@@ -37,27 +37,34 @@ try {
 
     New-Item -ItemType Directory -Path $installDir -Force | Out-Null
     $target = Join-Path $installDir 'kit.exe'
-    Move-Item (Join-Path $tmp 'kit.exe') $target -Force
+    try {
+        # Copy statt Move: Move-Item -Force scheitert, wenn das Ziel existiert
+        Copy-Item (Join-Path $tmp 'kit.exe') $target -Force
+    }
+    catch [System.IO.IOException] {
+        throw "$target ist gesperrt — laufendes kit schliessen (oder kurz warten, falls der Virenscanner prüft) und nochmals starten."
+    }
     Write-Host "Installiert: $target"
 }
 finally {
     Remove-Item $tmp -Recurse -Force -ErrorAction SilentlyContinue
 }
 
-# Zielordner in den Benutzer-PATH
+# Zielordner an den Anfang des Benutzer-PATH, damit er vor alten kit-Kopien liegt
 $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
-$entries = if ($userPath) { $userPath -split ';' } else { @() }
-if ($entries -notcontains $installDir) {
-    [Environment]::SetEnvironmentVariable('Path', (($entries + $installDir) -join ';').Trim(';'), 'User')
-    Write-Host "$installDir wurde zum Benutzer-PATH hinzugefügt (neues Terminal öffnen)."
+$entries = @(if ($userPath) { $userPath -split ';' | Where-Object { $_ } })
+if ($entries[0] -ne $installDir) {
+    $rest = @($entries | Where-Object { $_ -ne $installDir })
+    [Environment]::SetEnvironmentVariable('Path', ((@($installDir) + $rest) -join ';'), 'User')
+    Write-Host "$installDir steht jetzt vorne im Benutzer-PATH (neues Terminal öffnen)."
 }
-if (($env:Path -split ';') -notcontains $installDir) { $env:Path = "$env:Path;$installDir" }
+$env:Path = "$installDir;" + (($env:Path -split ';' | Where-Object { $_ -and $_ -ne $installDir }) -join ';')
 
 # Andere kit.exe, die vorher im PATH liegen (z. B. alte pipx-Installation)?
 $others = Get-Command kit -All -CommandType Application -ErrorAction SilentlyContinue |
     Where-Object { $_.Source -ne $target }
 foreach ($other in $others) {
-    Write-Warning "Weitere kit-Installation gefunden: $($other.Source) — entfernen, damit nicht die alte startet."
+    Write-Warning "Weitere kit-Installation gefunden: $($other.Source) — entfernen (pipx: 'pipx uninstall kit')."
 }
 
 $codexHome = if ($env:CODEX_HOME) { $env:CODEX_HOME } else { Join-Path $HOME '.codex' }
