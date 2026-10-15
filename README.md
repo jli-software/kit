@@ -1,212 +1,102 @@
-# Kit — KIterminal
+<div align="center">
+  <img src="kit-icon.svg" width="120" alt="kit logo" />
+  <h1>kit</h1>
+  <p>A tiny AI sidekick for your terminal — fix an email, translate a text,<br/>ask a quick question. Starts in milliseconds, runs on your ChatGPT plan.</p>
 
-**Ein schlankes Terminal-KI-Tool für schnelle Aufgaben.** In Rust geschrieben: ein Binary von rund 2,5 MB, das in wenigen Millisekunden startet.
+  ![Version](https://img.shields.io/badge/version-0.11.0-ff3b30?style=flat-square)
+  ![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20Windows-89b4fa?style=flat-square)
+  ![License](https://img.shields.io/badge/license-MIT-a6e3a1?style=flat-square)
+  ![Built with Rust](https://img.shields.io/badge/built%20with-Rust-f5a97f?style=flat-square)
+</div>
 
-Multi-Provider-Support: **OpenAI Codex über dein ChatGPT-Abo** (kein API-Key nötig) + **Anthropic Claude** + **DeepSeek V4**. Entwickelt als Ergänzung zu vollwertigen Coding-Agents (Claude Code, Codex CLI) — für die kleinen, schnellen Dinge zwischendurch.
+---
 
-## Features
+**kit** (short for *KI-Terminal*, and yes, a nod to K.I.T.T.) handles the small things in between: proofreading, translations and quick questions, without opening a browser or a full coding agent. Copy a text, run `kit -m`, and the corrected version is already back in your clipboard.
 
-- 🤖 **Multi-Provider** — OpenAI Codex (ChatGPT-Login), Anthropic Claude, DeepSeek V4; pro Modus konfigurierbar
-- 💬 **Chat-Modi**
-  - Normaler Chat (default)
-  - Codex — Programmier-Assistent
-- ✉️ **E-Mail** — Korrektur (`-m`), Verbesserung (`-ma`), Professioneller Rewrite (`-mp`)
-- 🌐 **Übersetzung** — DE↔EN aus Clipboard oder direkt (`-t`)
-- 📋 **Clipboard-Integration** — Input aus Clipboard lesen, Antwort automatisch kopieren
-- 🔄 **Pipe-Support** — `cat file.txt | kit "Zusammenfassen"` + interaktiver Follow-up
-- 💾 **Chat-History** — Automatisches Speichern, Fortsetzen mit `-r`
+Ships as a single ~2.5 MB binary, with no runtime and no dependencies.
 
-## Installation
+---
 
-### Online (empfohlen)
+## Install
 
-Lädt das passende Binary der neusten Version, prüft die SHA256-Summe und legt es in den PATH. Weitere Abhängigkeiten braucht es nicht. Zum Aktualisieren den gleichen Befehl nochmals ausführen.
-
-**Linux / macOS** (x64 und arm64, Ziel `~/.local/bin`):
+**Linux / macOS**
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/jli-software/kit/master/install.sh | sh
 ```
 
-**Windows** (PowerShell, Ziel `%LOCALAPPDATA%\Programs\kit`, Benutzer-PATH wird ergänzt):
+**Windows** (PowerShell)
 
 ```powershell
 irm https://raw.githubusercontent.com/jli-software/kit/master/install.ps1 | iex
 ```
 
-Bestimmte Version: `KIT_VERSION=v0.11.0` bzw. `$env:KIT_VERSION = 'v0.11.0'`. Anderer Zielordner: `KIT_INSTALL_DIR`.
+Run the same command again to update. The installers verify the SHA256 checksum and add kit to your `PATH`. Pin a version with `KIT_VERSION=v0.11.0`; change the target folder with `KIT_INSTALL_DIR`.
 
-### Aus dem Quellcode (Rust)
+From source: `cargo install --git https://github.com/jli-software/kit`
+
+## Sign in
+
+kit uses your **ChatGPT subscription** through the [Codex CLI](https://github.com/openai/codex) login, so no API key is needed:
 
 ```bash
-cargo install --git https://github.com/jli-software/kit
+codex login
 ```
 
-Linux braucht für die Zwischenablage `wl-clipboard` (Wayland) oder `xclip`/`xsel` (X11).
+kit reads the tokens from `~/.codex/auth.json` and refreshes them on its own. Requests count towards your ChatGPT usage limits. The Codex backend is not an official public API and may change.
 
-### Provider einrichten
+Prefer API keys? Set `ANTHROPIC_API_KEY` or `DEEPSEEK_API_KEY` and pick that provider in the config.
 
-**OpenAI Codex (Default)** — nutzt dein ChatGPT-Abo statt API-Guthaben. kit verwendet den Login von [Codex CLI](https://github.com/openai/codex), einmal anmelden genügt:
+## Usage
 
-```bash
-codex login        # "Sign in with ChatGPT"
-```
+| Command | What it does |
+|---|---|
+| `kit` | Interactive chat |
+| `kit "question"` | Chat, starting with a question |
+| `kit -m` | Proofread an email (from clipboard, or `kit -m "text"`) |
+| `kit -ma` | Proofread and improve wording |
+| `kit -mp` | Rewrite in a professional business tone |
+| `kit -t` | Translate German ↔ English |
+| `kit -c` | Coding assistant (interactive or `kit -c "question"`) |
+| `kit -r` | Resume a previous chat (`kit -r -c` for coding chats) |
 
-kit liest die Tokens aus `~/.codex/auth.json` (bzw. `$CODEX_HOME`) und erneuert sie selbst, wenn sie ablaufen. Anfragen zählen gegen das Nutzungskontingent deines ChatGPT-Abos. Die Schnittstelle (`chatgpt.com/backend-api/codex`) ist nicht offiziell dokumentiert und kann sich ändern.
-
-**Anthropic / DeepSeek** — per API-Key (optional):
-
-```bash
-export ANTHROPIC_API_KEY='dein-anthropic-key'
-export DEEPSEEK_API_KEY='dein-deepseek-key'
-```
-
-## Verwendung
-
-### Normaler Chat
+Results are copied to the clipboard automatically. You can also pipe text in:
 
 ```bash
-kit                     # Interaktiver Chat
-kit -r                  # Vorherigen Chat fortsetzen
-```
-
-### Codex (Programmier-Assistent)
-
-```bash
-kit -c                  # Interaktiv
-kit -c "Wie sortiere ich eine Liste in Python?"
-kit -c -r               # Codex-Chat fortsetzen
-```
-
-### E-Mail-Korrektur
-
-```bash
-kit -m                  # Aus Clipboard lesen + korrigieren
-kit -m "Hallo, ich wollte fragen ob..."
-kit -ma                 # Korrektur + inhaltliche Verbesserung
-kit -mp                 # Professioneller Business-Rewrite
-```
-
-### Übersetzung
-
-```bash
-kit -t                  # Aus Clipboard
-kit -t "Hello World"
-```
-
-### Pipe-Support
-
-```bash
-# Code Review
-cat script.py | kit -c "Review diesen Code"
-
-# Log-Analyse
-tail -100 app.log | kit "Fasse die Fehler zusammen"
-
-# E-Mail aus Datei
+cat app.log | kit "Summarize the errors"
 cat email.txt | kit -m
-
-# Übersetzung aus Datei
-cat dokument.txt | kit -t
 ```
 
-Nach der Pipe-Verarbeitung wechselt kit automatisch in den interaktiven Modus für Folgefragen.
+After a piped question, kit stays open for follow-ups. Press Ctrl+C to stop an answer; the chat is saved.
 
-## Konfiguration
+## Configuration
 
-### Provider & Modell pro Modus
-
-Bearbeite `~/.config/KIterminal/config.json`:
+`kit -s` opens `~/.config/KIterminal/config.json`. You can set a provider and model per mode:
 
 ```json
-{
-  "version": "2.0",
-  "language": "de",
-  "modes": {
-    "normalchat": {
-      "provider": "codex",
-      "model": "gpt-6-luna",
-      "max_tokens": 4096,
-      "reasoning_effort": "low"
-    },
-    "email": {
-      "provider": "anthropic",
-      "model": "claude-haiku-4-5",
-      "max_tokens": 2048,
-      "reasoning_effort": "none"
-    }
-  }
+"email": {
+  "provider": "codex",
+  "model": "gpt-6-luna",
+  "max_tokens": 2048,
+  "reasoning_effort": "low"
 }
 ```
 
-**Provider-Optionen:** `codex`, `anthropic`, `deepseek`  
-**Codex-Modelle:** was dein ChatGPT-Abo in Codex anbietet, z. B. `gpt-6-luna` (klein, günstig — Default), `gpt-6-sol`, `gpt-6-astra`  
-**DeepSeek-Modelle:** `deepseek-v4-flash` (schnell), `deepseek-v4-pro` (stark)  
-**Reasoning Effort:** `none`, `low`, `medium`, `high` (bei Codex wird `none` zu `low`)  
-`max_tokens` gilt nur für Anthropic/DeepSeek.
+- **Providers:** `codex` (default), `anthropic`, `deepseek`
+- **Models:** for `codex`, any model your ChatGPT plan offers in Codex. The default is `gpt-6-luna`, the small, cheap one.
+- **Reasoning effort:** `none`, `low`, `medium`, `high`
+- **Answer language:** `"language": "de"`. Supported: `en`, `de`, `chde`, `fr`, `es`, `it`, `pt`, `nl`.
 
-Fehlt ein Modus in der Datei, gilt der Default (Codex mit `gpt-6-luna`). Bestehende Configs werden nicht überschrieben. Auf Codex umstellen geht mit `kit -i` (Werkseinstellungen) oder von Hand.
+`kit -e <mode>` edits the system prompt of a mode. `kit -i` resets everything to defaults.
 
-### Config-Editor
-
-```bash
-kit --setup             # Config mit Editor öffnen ($EDITOR, sonst System-Standard)
-kit -e codex            # Codex-Instructions bearbeiten
-kit -e normalchat       # Chat-Instructions bearbeiten
-kit -i                  # Auf Werkseinstellungen zurücksetzen
-```
-
-### Sprache
-
-Setze `"language": "de"` in der Config für deutsche Antworten.  
-Unterstützt: `en`, `de`, `chde`, `fr`, `es`, `it`, `pt`, `nl`
-
-## Architektur
-
-```
-src/main.rs        — CLI (clap), Modi, Chat-Loop (rustyline)
-src/config.rs      — Config v2.0 + Instruction-Dateien
-src/providers.rs   — Codex (Responses-API), Anthropic/DeepSeek (Messages-API), alles gestreamt
-src/codex_auth.rs  — ChatGPT-OAuth: Tokens aus Codex CLI lesen und erneuern
-src/http.rs        — HTTP-Agent (ureq, rustls, Proxy aus der Umgebung) + SSE-Leser
-src/render.rs      — Markdown-Formatierung beim Streamen, Spinner
-src/history.rs     — Chat-Verläufe
-src/platform.rs    — Zwischenablage, Editor, Terminal nach Piped-Input
-```
-
-Alle Provider laufen direkt über HTTP, ohne SDK. Config, Instruction-Dateien und Chat-Verläufe haben dasselbe Format wie die frühere Python-Version (≤ 0.10), bestehende Dateien werden weiter genutzt.
-
-## Entwicklung & Releases
+## Development
 
 ```bash
 cargo test
 cargo run -- -t "Hallo Welt"
 ```
 
-- **CI** (`.github/workflows/ci.yml`): `cargo fmt --check`, `clippy -D warnings` und Tests auf Linux, Windows und macOS bei jedem Push, dazu `shellcheck` für `install.sh` und ein Syntax-Check für `install.ps1`.
-- **Release** (`.github/workflows/release.yml`): Version in `Cargo.toml` hochzählen, CHANGELOG-Abschnitt schreiben, dann Tag pushen:
-
-  ```bash
-  git tag v0.11.0 && git push origin v0.11.0
-  ```
-
-  Der Workflow baut auf den jeweiligen Runnern Binaries für Linux x64/arm64, Windows x64 und macOS arm64, prüft dass sie starten, und erstellt das GitHub-Release mit `SHA256SUMS` und dem CHANGELOG-Abschnitt als Text.
-
-## Plattform-Support
-
-- **Linux** — vollständig
-- **macOS** — vollständig
-- **Windows** — vollständig
-- **WSL (Windows)** — vollständig
-- **Termux (Android)** — Clipboard-Integration angepasst
-
-## Tipps
-
-1. **Pipe + Follow-up** — `cat file | kit -c "Erklären"` und dann direkt Folgefragen stellen
-2. **Chat fortsetzen** — `-r` lädt den letzten Chat mit allen Kontext
-3. **Clipboard-Workflow** — Text kopieren → `kit -m` oder `kit -t` → Antwort ist schon im Clipboard
-4. **Reasoning steuern** — `reasoning_effort: "high"` für komplexe Fragen, `"none"` für schnelle Antworten
-5. **Provider pro Aufgabe** — Codex `gpt-6-luna` für Mail/Übersetzung, grössere Modelle nur wo nötig
+CI runs `fmt`, `clippy` and the tests on Linux, Windows and macOS. To release, bump the version in `Cargo.toml`, add a `CHANGELOG.md` entry and push a tag (`git tag v0.11.0 && git push origin v0.11.0`). GitHub Actions then builds the binaries and publishes the release.
 
 ## License
 

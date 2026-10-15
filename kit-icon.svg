@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#18181c"/>
+      <stop offset="100%" stop-color="#050506"/>
+    </linearGradient>
+    <linearGradient id="housing" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#2a2a30"/>
+      <stop offset="100%" stop-color="#0c0c0e"/>
+    </linearGradient>
+    <filter id="glow" x="-50%" y="-150%" width="200%" height="400%">
+      <feGaussianBlur stdDeviation="10" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <clipPath id="slot">
+      <rect x="64" y="230" width="384" height="52" rx="10"/>
+    </clipPath>
+  </defs>
+
+  <!-- Background -->
+  <rect width="512" height="512" rx="96" fill="url(#bg)"/>
+
+  <!-- Scanner housing -->
+  <rect x="48" y="216" width="416" height="80" rx="20" fill="url(#housing)" stroke="#3a3a42" stroke-width="3"/>
+
+  <!-- Dim LED segments -->
+  <g fill="#3a0a0a">
+    <rect x="68" y="236" width="40" height="40" rx="6"/>
+    <rect x="116" y="236" width="40" height="40" rx="6"/>
+    <rect x="164" y="236" width="40" height="40" rx="6"/>
+    <rect x="212" y="236" width="40" height="40" rx="6"/>
+    <rect x="260" y="236" width="40" height="40" rx="6"/>
+    <rect x="308" y="236" width="40" height="40" rx="6"/>
+    <rect x="356" y="236" width="40" height="40" rx="6"/>
+    <rect x="404" y="236" width="40" height="40" rx="6"/>
+  </g>
+
+  <!-- Moving scanner light -->
+  <g clip-path="url(#slot)">
+    <g filter="url(#glow)">
+      <g>
+        <rect x="-28" y="236" width="40" height="40" rx="6" fill="#ff1a1a" opacity="0.18"/>
+        <rect x="20" y="236" width="40" height="40" rx="6" fill="#ff1a1a" opacity="0.5"/>
+        <rect x="68" y="236" width="40" height="40" rx="6" fill="#ff3b30"/>
+        <rect x="116" y="236" width="40" height="40" rx="6" fill="#ff1a1a" opacity="0.5"/>
+        <rect x="164" y="236" width="40" height="40" rx="6" fill="#ff1a1a" opacity="0.18"/>
+        <animateTransform attributeName="transform" type="translate"
+          values="0 0; 336 0; 0 0" keyTimes="0; 0.5; 1"
+          calcMode="spline" keySplines="0.45 0 0.55 1; 0.45 0 0.55 1"
+          dur="2.2s" repeatCount="indefinite"/>
+      </g>
+    </g>
+  </g>
+</svg>
