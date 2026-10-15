@@ -1,10 +1,11 @@
 //! kit — KIterminal: schlankes KI-CLI-Tool für schnelle Aufgaben.
 //!
-//! Modi: Chat, Codex (Programmier-Assistent), Mail (-m/-ma/-mp), Übersetzung (-t)
+//! Modi: Chat, Terminal-Assistent (-c), Mail (-m/-ma/-mp), Übersetzung (-t)
 //! Provider: OpenAI Codex (ChatGPT-Login), Anthropic, DeepSeek
 
 mod codex_auth;
 mod config;
+mod environment;
 mod history;
 mod http;
 mod interrupt;
@@ -33,26 +34,26 @@ const EPILOG: &str = "\
 Beispiele:
   kit                     Chat (default)
   kit \"Frage\"             Chat mit erster Frage
-  kit -c                  Codex Programmier-Assistent
-  kit -c \"Frage\"          Codex One-Shot
+  kit -c \"Frage\"          Terminal-Befehl für diese Shell/dieses OS
+  kit -c                  Terminal-Assistent (interaktiv)
   kit -m                  E-Mail-Korrektur (aus Clipboard)
   kit -m \"Text\"           E-Mail-Korrektur (direkt)
   kit -ma \"Text\"          E-Mail-Korrektur + Verbesserung
   kit -mp \"Text\"          Professioneller E-Mail-Rewrite
   kit -t \"Hello World\"    Übersetzung DE<->EN
   kit -r                  Chat fortsetzen
-  kit -r -c               Codex-Chat fortsetzen
+  kit -r -c               Terminal-Chat fortsetzen
 
 Piped Input:
   cat file.txt | kit \"Zusammenfassen\"
-  cat script.py | kit -c \"Erklären\"
+  cat error.log | kit -c \"Wie behebe ich das?\"
   cat email.txt | kit -m
   cat doc.txt | kit -t
 
 Konfiguration:
   kit -s                  Config-Datei bearbeiten
-  kit -e codex            Instructions eines Modus bearbeiten
-                          (normalchat, codex, email, email-advanced, email-pro, translate)
+  kit -e terminal         Instructions eines Modus bearbeiten
+                          (normalchat, terminal, email, email-advanced, email-pro, translate)
   Instruction-Dateien:    ~/.config/KIterminal/instructions/
   Config-Datei:           ~/.config/KIterminal/config.json
 
@@ -66,9 +67,9 @@ Mehr Infos: https://github.com/jli-software/kit";
 #[derive(Parser)]
 #[command(name = "kit", about = DESCRIPTION, after_help = EPILOG, disable_version_flag = true)]
 struct Cli {
-    /// Codex Programmier-Assistent (interaktiv oder One-Shot)
-    #[arg(short = 'c', long = "codex", num_args = 0..=1, default_missing_value = "", value_name = "TEXT", help_heading = "KI-Modi")]
-    codex: Option<String>,
+    /// Terminal-Assistent: Befehle für die aktuelle Shell und das OS (interaktiv oder One-Shot)
+    #[arg(short = 'c', long = "command", alias = "codex", num_args = 0..=1, default_missing_value = "", value_name = "TEXT", help_heading = "KI-Modi")]
+    command: Option<String>,
 
     /// Übersetzung DE<->EN (Clipboard oder Text)
     #[arg(short = 't', long, num_args = 0..=1, default_missing_value = "", value_name = "TEXT", help_heading = "Textverarbeitung")]
@@ -144,6 +145,8 @@ fn read_stdin() -> Option<String> {
 
 struct App {
     cfg: Config,
+    /// Erst beim ersten Terminal-Call ermittelt
+    env: std::sync::OnceLock<environment::Environment>,
 }
 
 enum Turn {
@@ -154,9 +157,11 @@ enum Turn {
 impl App {
     fn system(&self, mode: &str) -> String {
         let text = config::instruction(mode, &self.cfg.language);
-        if mode == "codex" {
-            text.replace("{currentOS}", os_name())
-                .replace("{platforminfo}", &platform_info())
+        if mode == "terminal" {
+            text + &self
+                .env
+                .get_or_init(environment::Environment::detect)
+                .prompt_block()
         } else {
             text
         }
@@ -205,7 +210,13 @@ impl App {
         history.push(Message::user(question));
         match self.call(mode, history, true) {
             Ok(answer) => {
-                platform::copy(&answer);
+                match environment::first_code_block(&answer).filter(|_| mode == "terminal") {
+                    Some(cmd) => {
+                        platform::copy(&cmd);
+                        println!("{}", paint(DIM, "Befehl in der Zwischenablage"));
+                    }
+                    None => platform::copy(&answer),
+                }
                 history.push(Message::assistant(answer));
             }
             Err(msg) => {
@@ -287,7 +298,11 @@ impl App {
         }
 
         if initial.is_none() {
-            let mode_name = if mode == "codex" { "Codex" } else { "Chat" };
+            let mode_name = if mode == "terminal" {
+                "Terminal"
+            } else {
+                "Chat"
+            };
             println!(
                 "{}",
                 paint(
@@ -393,19 +408,6 @@ impl Highlighter for PromptColor {
     }
 }
 
-fn os_name() -> &'static str {
-    match std::env::consts::OS {
-        "windows" => "Windows",
-        "macos" => "Darwin",
-        "linux" => "Linux",
-        other => other,
-    }
-}
-
-fn platform_info() -> String {
-    format!("{}-{}", os_name(), std::env::consts::ARCH)
-}
-
 fn print_version() {
     let row = |k: &str, v: &str| println!("{} {v}", paint(CYAN, &format!("{k:<14}")));
     row("Version:", VERSION);
@@ -422,14 +424,14 @@ fn print_version() {
 fn edit_instructions(mode: &str) -> Result<(), String> {
     let file = match mode.to_lowercase().as_str() {
         "normalchat" => "normalchat.txt",
-        "codex" => "codex.txt",
+        "terminal" | "codex" => "terminal.txt",
         "email" => "email.txt",
         "email-advanced" | "email_advanced" => "email_advanced.txt",
         "email-pro" | "email_pro" => "email_pro.txt",
         "translate" => "translate.txt",
         _ => {
             return Err(format!(
-                "Unbekannter Modus: {mode}\nVerfügbar: codex, email, email-advanced, email-pro, normalchat, translate"
+                "Unbekannter Modus: {mode}\nVerfügbar: email, email-advanced, email-pro, normalchat, terminal, translate"
             ));
         }
     };
@@ -472,6 +474,7 @@ fn run(cli: Cli) -> Result<(), String> {
 
     let app = App {
         cfg: config::load()?,
+        env: std::sync::OnceLock::new(),
     };
     let stdin = read_stdin();
     let one_shot_flag = cli.mail.is_some()
@@ -482,7 +485,7 @@ fn run(cli: Cli) -> Result<(), String> {
     // Frage: Positional vor Text eines Modus-Flags
     let question = cli.question.clone().or_else(|| {
         [
-            &cli.codex,
+            &cli.command,
             &cli.mail,
             &cli.mail_advanced,
             &cli.mail_pro,
@@ -518,15 +521,15 @@ fn run(cli: Cli) -> Result<(), String> {
         app.mail("email_pro", &mail_text(&cli.mail_pro), stdin.as_deref());
     } else if cli.translate.is_some() {
         app.mail("translate", &mail_text(&cli.translate), stdin.as_deref());
-    } else if let Some(text) = &cli.codex {
+    } else if let Some(text) = &cli.command {
         if !text.is_empty() && stdin.is_none() {
             let mut history = Vec::new();
-            app.chat_turn("codex", &mut history, text);
+            app.chat_turn("terminal", &mut history, text);
         } else {
             let initial = stdin
                 .as_deref()
                 .map(|s| build_piped_message(question.as_deref().unwrap_or(""), s));
-            app.interactive("codex", cli.resume, initial, stdin.is_some());
+            app.interactive("terminal", cli.resume, initial, stdin.is_some());
         }
     } else {
         let initial = match &stdin {
@@ -580,7 +583,7 @@ mod tests {
         let cli = parse(&["Wie spät?"]);
         assert_eq!(cli.question.as_deref(), Some("Wie spät?"));
         let cli = parse(&["-r", "-c"]);
-        assert!(cli.resume && cli.codex.as_deref() == Some(""));
+        assert!(cli.resume && cli.command.as_deref() == Some(""));
     }
 
     #[test]

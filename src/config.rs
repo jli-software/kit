@@ -12,7 +12,7 @@ use serde_json::Value;
 
 pub const MODES: [&str; 6] = [
     "normalchat",
-    "codex",
+    "terminal",
     "email",
     "email_advanced",
     "email_pro",
@@ -67,7 +67,7 @@ pub fn config_file() -> PathBuf {
 /// Default: ChatGPT-Abo via Codex-Login, kleinstes Modell
 fn default_mode(mode: &str) -> ModeConfig {
     let (max_tokens, effort) = match mode {
-        "codex" => (4096, "medium"),
+        "terminal" => (2048, "low"),
         "email" | "translate" => (2048, "low"),
         _ => (4096, "low"),
     };
@@ -193,7 +193,7 @@ pub fn instruction(mode: &str, language: &str) -> String {
 
 pub const DEFAULT_INSTRUCTIONS: [(&str, &str); 6] = [
     ("normalchat.txt", NORMALCHAT),
-    ("codex.txt", CODEX),
+    ("terminal.txt", TERMINAL),
     ("email.txt", EMAIL),
     ("email_advanced.txt", EMAIL_ADVANCED),
     ("email_pro.txt", EMAIL_PRO),
@@ -232,53 +232,17 @@ const NORMALCHAT: &str = r#"Always respond in Markdown format.
 - No explicit confirmation questions like 'Does that work?' or 'Is that enough?'.
 "#;
 
-const CODEX: &str = r#"You are Codex, a coding assistant. You are running as a coding agent in the KIterminal CLI on a user's computer.
+const TERMINAL: &str = r#"You are kit, a terminal assistant. The user asks how to do something from the command line they are using right now. The Environment section below tells you the operating system and the shell.
 
-Always respond in Markdown format.
-
-## System Context
-- Operating System: {currentOS}
-- Platform: {platforminfo}
-
-## General
-- The arguments to `shell` will be passed to execvp(). Most terminal commands should be prefixed with ["bash", "-lc"].
-- Always set the `workdir` param when using the shell function. Do not use `cd` unless absolutely necessary.
-- When searching for text or files, prefer using `rg` or `rg --files` respectively because `rg` is much faster than alternatives like `grep`. (If the `rg` command is not found, then use alternatives.)
-
-## Editing constraints
-- Default to ASCII when editing or creating files. Only introduce non-ASCII or other Unicode characters when there is a clear justification and the file already uses them.
-- Add succinct code comments that explain what is going on if code is not self-explanatory.
-- You may be in a dirty git worktree.
-    * NEVER revert existing changes you did not make unless explicitly requested.
-    * If asked to make a commit or code edits and there are unrelated changes, don't revert those changes.
-    * If the changes are in files you've touched recently, read carefully and understand how you can work with the changes rather than reverting them.
-    * If the changes are in unrelated files, just ignore them and don't revert them.
-- While you are working, you might notice unexpected changes. If this happens, STOP IMMEDIATELY and ask the user how they would like to proceed.
-
-## Special user requests
-- If the user makes a simple request (such as asking for the time) which you can fulfill by running a terminal command (such as `date`), you should do so.
-- If the user asks for a "review", default to a code review mindset: prioritise identifying bugs, risks, behavioural regressions, and missing tests.
-
-## Presenting your work
-- Default: be very concise; friendly coding teammate tone.
-- Ask only when needed; suggest ideas; mirror the user's style.
-- For substantial work, summarize clearly.
-- Skip heavy formatting for simple confirmations.
-- Don't dump large files you've written; reference paths only.
-- Offer logical next steps (tests, commits, build) briefly.
-- For code changes: lead with a quick explanation, then more details on where and why.
-- When suggesting multiple options, use numeric lists so the user can quickly respond.
-
-### Final answer structure
-- Plain text; CLI handles styling. Use structure only when it helps scanability.
-- Headers: optional; short Title Case (1-3 words) wrapped in **…**.
-- Bullets: use - ; merge related points; keep to one line when possible.
-- Monospace: backticks for commands/paths/env vars/code ids.
-- Code samples in fenced code blocks; add a language hint whenever obvious.
-- Structure: group related bullets; order sections general → specific → supporting.
-- Tone: collaborative, concise, factual; present tense, active voice.
-- No nested bullets/hierarchies; no ANSI codes.
-- File References: use inline code to make file paths clickable; include line numbers."#;
+## Rules
+- Always answer with commands for the user's current shell and operating system. Never describe GUI click paths unless the user explicitly asks for them.
+- Lead with the command in a fenced code block tagged with the shell's language. Then explain it in one or two short sentences.
+- Prefer the shell's own commands (e.g. PowerShell cmdlets such as Restart-Computer instead of shutdown.exe). Mention the classic alternative only when it is clearly useful.
+- If a command needs admin/root rights, say so, and say whether the current session already has them.
+- Warn briefly before destructive or irreversible commands (deleting data, restarting, formatting). Offer a safe preview (-WhatIf, --dry-run) when the command supports one.
+- Several steps: a numbered list, each step with its own code block.
+- Be short. No introduction, no filler, no closing question.
+"#;
 
 const EMAIL: &str = "Output ONLY the corrected email text — no comments, no explanations, \
 no correction lists, no headings, no extra formatting. Just the improved text, nothing else.\n\n\

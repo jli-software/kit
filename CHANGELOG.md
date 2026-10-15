@@ -2,6 +2,14 @@
 
 Alle nennenswerten Änderungen an KIterminal (kit) werden in dieser Datei dokumentiert.
 
+## [0.12.0] — 2026-10-15
+
+### Geändert
+- **`-c` ist jetzt der Terminal-Assistent statt eines Coding-Assistenten.** Vor jeder Frage erkennt kit das OS samt Version, die Shell, aus der es gestartet wurde (PowerShell 7, Windows PowerShell, cmd, Git Bash, bash, zsh, fish, Nushell …), Admin- bzw. Root-Rechte und den aktuellen Ordner. Die Antwort beginnt mit dem Befehl für genau diese Shell, ohne Klickpfade durch die Oberfläche, und warnt bei riskanten Befehlen. Die Shell wird über die Elternprozesse bestimmt, nicht über `$SHELL`.
+- Bei `-c` landet nur der Befehl in der Zwischenablage, also der erste Codeblock der Antwort.
+- Neuer Modus `terminal` mit eigener Instruction-Datei `terminal.txt`. Default ist Codex/`gpt-6-luna`, auch wenn eine bestehende Config den Modus noch nicht kennt. Der alte Modus `codex` und eine vorhandene `codex.txt` werden nicht mehr verwendet, aber auch nicht gelöscht.
+- Die Langform heisst jetzt `--command`, `--codex` funktioniert weiterhin.
+
 ## [0.11.0] — 2026-10-15
 
 ### Geändert

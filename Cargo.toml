@@ -1,8 +1,8 @@
 [package]
 name = "kit"
-version = "0.11.0"
+version = "0.12.0"
 edition = "2024"
-description = "KIterminal — schlankes KI-CLI-Tool: Mail-Korrektur, Übersetzung, Chat. Provider: OpenAI Codex (ChatGPT-Login), Anthropic, DeepSeek."
+description = "KIterminal — schlankes KI-CLI-Tool: Terminal-Assistent, Mail-Korrektur, Übersetzung, Chat. Provider: OpenAI Codex (ChatGPT-Login), Anthropic, DeepSeek."
 license = "MIT"
 repository = "https://github.com/jli-software/kit"
 readme = "README.md"
@@ -21,7 +21,13 @@ uuid = { version = "1", features = ["v4"] }
 [target.'cfg(windows)'.dependencies]
 clipboard-win = "5"
 enable-ansi-support = "0.2"
-windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_System_Console"] }
+windows-sys = { version = "0.59", features = [
+    "Win32_Foundation",
+    "Win32_System_Console",
+    "Win32_System_Diagnostics_ToolHelp",
+    "Win32_System_Registry",
+    "Win32_UI_Shell",
+] }
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
