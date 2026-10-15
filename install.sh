@@ -27,7 +27,7 @@ case "$(uname -m)" in
   *) fail "Nicht unterstützte Architektur: $(uname -m)" ;;
 esac
 
-[ "$os" = macos ] && [ "$arch" = x64 ] && fail "Für Intel-Macs gibt es kein Binary — 'pipx install git+https://github.com/$REPO' nehmen."
+[ "$os" = macos ] && [ "$arch" = x64 ] && fail "Für Intel-Macs gibt es kein Binary — 'cargo install --git https://github.com/$REPO' nehmen."
 
 asset="kit-$os-$arch"
 

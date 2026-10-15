@@ -1,13 +1,16 @@
 name: Release
 
 # Tag pushen → Binaries bauen → GitHub-Release mit Changelog-Abschnitt
-#   git tag v0.10.0 && git push origin v0.10.0
+#   git tag v0.11.0 && git push origin v0.11.0
 on:
   push:
     tags: ["v*"]
 
 permissions:
   contents: write
+
+env:
+  CARGO_TERM_COLOR: always
 
 jobs:
   build:
@@ -27,32 +30,26 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.13"
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
 
       - name: Tag passt zur Version
         shell: bash
         run: |
-          version=$(python -c "import re;print(re.search(r'__version__ = \"(.+)\"', open('kit/__init__.py').read())[1])")
+          version=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -n 1)
           if [ "v$version" != "$GITHUB_REF_NAME" ]; then
-            echo "::error::Tag $GITHUB_REF_NAME passt nicht zu kit/__init__.py ($version)"
+            echo "::error::Tag $GITHUB_REF_NAME passt nicht zu Cargo.toml ($version)"
             exit 1
           fi
 
-      - name: Installieren
-        run: python -m pip install . pytest pyinstaller
-
       - name: Tests
-        run: python -m pytest -q
+        run: cargo test --locked
 
       - name: Binary bauen
         shell: bash
         run: |
-          pyinstaller packaging/kit_entry.py --onefile --name kit \
-            --collect-submodules rich._unicode_data --collect-data rich._unicode_data
-          src=dist/kit; [ "$RUNNER_OS" = "Windows" ] && src=dist/kit.exe
+          cargo build --release --locked
+          src=target/release/kit; [ "$RUNNER_OS" = "Windows" ] && src=target/release/kit.exe
           mkdir -p out && cp "$src" "out/${{ matrix.asset }}"
 
       - name: Binary startet
@@ -109,4 +106,4 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create "$GITHUB_REF_NAME" out/* \
-            --title "kit $GITHUB_REF_NAME" --notes-file notes.md
+            --title "kit $GITHUB_REF_NAME" --notes-file notes.md --latest

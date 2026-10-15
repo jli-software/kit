@@ -1,0 +1,34 @@
+[package]
+name = "kit"
+version = "0.11.0"
+edition = "2024"
+description = "KIterminal — schlankes KI-CLI-Tool: Mail-Korrektur, Übersetzung, Chat. Provider: OpenAI Codex (ChatGPT-Login), Anthropic, DeepSeek."
+license = "MIT"
+repository = "https://github.com/jli-software/kit"
+readme = "README.md"
+
+[dependencies]
+base64 = "0.22"
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
+clap = { version = "4.5", features = ["derive"] }
+ctrlc = "3.4"
+rustyline = { version = "15", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+ureq = { version = "2.12", features = ["json"] }
+uuid = { version = "1", features = ["v4"] }
+
+[target.'cfg(windows)'.dependencies]
+clipboard-win = "5"
+enable-ansi-support = "0.2"
+windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_System_Console"] }
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true
+panic = "abort"

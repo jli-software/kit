@@ -1,38 +1,15 @@
-# Claude Code project docs
+# Rust
+/target/
+
+# Agent-Dateien (öffentliches Repo)
 CLAUDE.md
-
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-*.egg-info/
-dist/
-build/
-
-# PyInstaller
-*.spec
+AGENTS.md
+.claude/
 
 # IDE
 .idea/
 .vscode/
 
-# Claude Code
-.claude/
-
-# Virtual Environment
-venv/
-.venv/
-env/
-ENV/
-
-# Poetry
-poetry.lock
-release.sh
-
-
 # OS
 .DS_Store
 Thumbs.db
-AGENTS.md

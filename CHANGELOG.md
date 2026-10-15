@@ -2,6 +2,22 @@
 
 Alle nennenswerten Änderungen an KIterminal (kit) werden in dieser Datei dokumentiert.
 
+## [0.11.0] — 2026-10-15
+
+### Geändert
+- **Neu in Rust geschrieben.** Ein Start dauert rund 15 ms statt rund 3 s bei der Python-Version mit PyInstaller. Das Binary ist 2,6 MB statt 23 MB gross und braucht keine Laufzeit.
+- Alle Provider (Codex, Anthropic, DeepSeek) laufen direkt über HTTP mit Streaming, ohne SDK. Ein Proxy wird aus der Umgebung übernommen.
+- Markdown wird beim Streamen formatiert: Überschriften, Listen, Zitate, Codeblöcke, **fett** und `code`. Ohne Terminal oder mit `NO_COLOR` kommt Rohtext.
+- Mail und Übersetzung zeigen bis zur Antwort einen Spinner. Der Chat zeigt ihn bis zum ersten Zeichen.
+- Ctrl+C bricht eine laufende Antwort ab und speichert den Chat. Zweimal Ctrl+C beendet sofort.
+- `kit -m "Hinweis"` mit Piped-Input nimmt jetzt beide Teile, vorher ging der Piped-Text verloren.
+- `kit -s` und `kit -e` öffnen `$EDITOR`, falls gesetzt.
+- Config, Instruction-Dateien und Chat-Verläufe bleiben im selben Format, bestehende Dateien werden weiter genutzt. Der Config-Key `Chatpath` aus v1 wird jetzt auch gelesen.
+- Release-Assets und Installer bleiben gleich, ein Update läuft mit demselben Befehl.
+
+### Entfernt
+- Python-Code und pipx-Installation. Aus dem Quellcode: `cargo install --git https://github.com/jli-software/kit`
+
 ## [0.10.0] — 2026-10-14
 
 ### Hinzugefügt

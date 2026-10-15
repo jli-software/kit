@@ -1,6 +1,6 @@
 # Kit — KIterminal
 
-**Ein schlankes Terminal-KI-Tool für schnelle Aufgaben.**
+**Ein schlankes Terminal-KI-Tool für schnelle Aufgaben.** In Rust geschrieben: ein Binary von rund 2,5 MB, das in wenigen Millisekunden startet.
 
 Multi-Provider-Support: **OpenAI Codex über dein ChatGPT-Abo** (kein API-Key nötig) + **Anthropic Claude** + **DeepSeek V4**. Entwickelt als Ergänzung zu vollwertigen Coding-Agents (Claude Code, Codex CLI) — für die kleinen, schnellen Dinge zwischendurch.
 
@@ -20,7 +20,7 @@ Multi-Provider-Support: **OpenAI Codex über dein ChatGPT-Abo** (kein API-Key n�
 
 ### Online (empfohlen)
 
-Lädt das passende Binary der neusten Version, prüft die SHA256-Summe und legt es in den PATH. Python ist nicht nötig. Zum Aktualisieren den gleichen Befehl nochmals ausführen.
+Lädt das passende Binary der neusten Version, prüft die SHA256-Summe und legt es in den PATH. Weitere Abhängigkeiten braucht es nicht. Zum Aktualisieren den gleichen Befehl nochmals ausführen.
 
 **Linux / macOS** (x64 und arm64, Ziel `~/.local/bin`):
 
@@ -34,13 +34,15 @@ curl -fsSL https://raw.githubusercontent.com/jli-software/kit/master/install.sh 
 irm https://raw.githubusercontent.com/jli-software/kit/master/install.ps1 | iex
 ```
 
-Bestimmte Version: `KIT_VERSION=v0.10.0` bzw. `$env:KIT_VERSION = 'v0.10.0'`. Anderer Zielordner: `KIT_INSTALL_DIR`.
+Bestimmte Version: `KIT_VERSION=v0.11.0` bzw. `$env:KIT_VERSION = 'v0.11.0'`. Anderer Zielordner: `KIT_INSTALL_DIR`.
 
-### Mit pipx (aus dem Quellcode)
+### Aus dem Quellcode (Rust)
 
 ```bash
-pipx install git+https://github.com/jli-software/kit
+cargo install --git https://github.com/jli-software/kit
 ```
+
+Linux braucht für die Zwischenablage `wl-clipboard` (Wayland) oder `xclip`/`xsel` (X11).
 
 ### Provider einrichten
 
@@ -127,11 +129,11 @@ Bearbeite `~/.config/KIterminal/config.json`:
       "max_tokens": 4096,
       "reasoning_effort": "low"
     },
-    "codex": {
+    "email": {
       "provider": "anthropic",
-      "model": "claude-sonnet-4-6",
-      "max_tokens": 4096,
-      "reasoning_effort": "low"
+      "model": "claude-haiku-4-5",
+      "max_tokens": 2048,
+      "reasoning_effort": "none"
     }
   }
 }
@@ -143,12 +145,12 @@ Bearbeite `~/.config/KIterminal/config.json`:
 **Reasoning Effort:** `none`, `low`, `medium`, `high` (bei Codex wird `none` zu `low`)  
 `max_tokens` gilt nur für Anthropic/DeepSeek.
 
-Bestehende Configs werden nicht überschrieben — auf Codex umstellen mit `kit -i` (Werkseinstellungen) oder von Hand.
+Fehlt ein Modus in der Datei, gilt der Default (Codex mit `gpt-6-luna`). Bestehende Configs werden nicht überschrieben. Auf Codex umstellen geht mit `kit -i` (Werkseinstellungen) oder von Hand.
 
 ### Config-Editor
 
 ```bash
-kit --setup             # Config mit Editor öffnen
+kit --setup             # Config mit Editor öffnen ($EDITOR, sonst System-Standard)
 kit -e codex            # Codex-Instructions bearbeiten
 kit -e normalchat       # Chat-Instructions bearbeiten
 kit -i                  # Auf Werkseinstellungen zurücksetzen
@@ -162,30 +164,33 @@ Unterstützt: `en`, `de`, `chde`, `fr`, `es`, `it`, `pt`, `nl`
 ## Architektur
 
 ```
-kit/main.py          — CLI, Modi, Chat-Loop
-kit/config.py        — Config v2.0 + Instruction-Dateien
-kit/providers.py     — Provider-Abstraktion: stream_text() für alle Provider
-kit/codex_auth.py    — ChatGPT-OAuth: Tokens aus Codex CLI lesen und erneuern
-kit/chat_history.py  — Persistente Chat-Speicherung
+src/main.rs        — CLI (clap), Modi, Chat-Loop (rustyline)
+src/config.rs      — Config v2.0 + Instruction-Dateien
+src/providers.rs   — Codex (Responses-API), Anthropic/DeepSeek (Messages-API), alles gestreamt
+src/codex_auth.rs  — ChatGPT-OAuth: Tokens aus Codex CLI lesen und erneuern
+src/http.rs        — HTTP-Agent (ureq, rustls, Proxy aus der Umgebung) + SSE-Leser
+src/render.rs      — Markdown-Formatierung beim Streamen, Spinner
+src/history.rs     — Chat-Verläufe
+src/platform.rs    — Zwischenablage, Editor, Terminal nach Piped-Input
 ```
 
-Anthropic und DeepSeek laufen über das Anthropic SDK (DeepSeek über den Anthropic-kompatiblen Endpoint). Codex spricht die Responses-API des ChatGPT-Backends direkt per `httpx` an; die Chat-History wird dafür ins Responses-Format umgewandelt.
+Alle Provider laufen direkt über HTTP, ohne SDK. Config, Instruction-Dateien und Chat-Verläufe haben dasselbe Format wie die frühere Python-Version (≤ 0.10), bestehende Dateien werden weiter genutzt.
 
 ## Entwicklung & Releases
 
 ```bash
-python -m venv .venv && .venv/bin/pip install -e . pytest
-.venv/bin/pytest
+cargo test
+cargo run -- -t "Hallo Welt"
 ```
 
-- **CI** (`.github/workflows/ci.yml`): Tests auf Linux, Windows und macOS bei jedem Push, dazu `shellcheck` für `install.sh` und ein Syntax-Check für `install.ps1`.
-- **Release** (`.github/workflows/release.yml`): Version in `kit/__init__.py` und `pyproject.toml` hochzählen, CHANGELOG-Abschnitt schreiben, dann Tag pushen:
+- **CI** (`.github/workflows/ci.yml`): `cargo fmt --check`, `clippy -D warnings` und Tests auf Linux, Windows und macOS bei jedem Push, dazu `shellcheck` für `install.sh` und ein Syntax-Check für `install.ps1`.
+- **Release** (`.github/workflows/release.yml`): Version in `Cargo.toml` hochzählen, CHANGELOG-Abschnitt schreiben, dann Tag pushen:
 
   ```bash
-  git tag v0.10.0 && git push origin v0.10.0
+  git tag v0.11.0 && git push origin v0.11.0
   ```
 
-  Der Workflow baut Binaries für Linux x64/arm64, Windows x64 und macOS arm64, prüft dass sie starten, und erstellt das GitHub-Release mit `SHA256SUMS` und dem CHANGELOG-Abschnitt als Text.
+  Der Workflow baut auf den jeweiligen Runnern Binaries für Linux x64/arm64, Windows x64 und macOS arm64, prüft dass sie starten, und erstellt das GitHub-Release mit `SHA256SUMS` und dem CHANGELOG-Abschnitt als Text.
 
 ## Plattform-Support
 
