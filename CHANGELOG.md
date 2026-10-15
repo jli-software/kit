@@ -13,7 +13,7 @@ Alle nennenswerten Änderungen an KIterminal (kit) werden in dieser Datei dokume
 - `kit -m "Hinweis"` mit Piped-Input nimmt jetzt beide Teile, vorher ging der Piped-Text verloren.
 - `kit -s` und `kit -e` öffnen `$EDITOR`, falls gesetzt.
 - Config, Instruction-Dateien und Chat-Verläufe bleiben im selben Format, bestehende Dateien werden weiter genutzt. Der Config-Key `Chatpath` aus v1 wird jetzt auch gelesen.
-- Release-Assets und Installer bleiben gleich, ein Update läuft mit demselben Befehl.
+- Release-Assets und Installer bleiben gleich, ein Update läuft mit demselben Befehl. `install.ps1` schiebt die alte Exe vorher als `kit.exe.old` beiseite, so klappt das Update auch, wenn sie gesperrt ist.
 
 ### Entfernt
 - Python-Code und pipx-Installation. Aus dem Quellcode: `cargo install --git https://github.com/jli-software/kit`

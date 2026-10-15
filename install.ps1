@@ -37,13 +37,16 @@ try {
 
     New-Item -ItemType Directory -Path $installDir -Force | Out-Null
     $target = Join-Path $installDir 'kit.exe'
-    try {
-        # Copy statt Move: Move-Item -Force scheitert, wenn das Ziel existiert
-        Copy-Item (Join-Path $tmp 'kit.exe') $target -Force
+    # Alte Version zuerst beiseite schieben: eine gesperrte oder laufende Exe
+    # lässt sich unter Windows nicht überschreiben, wohl aber umbenennen.
+    $old = "$target.old"
+    Remove-Item $old -Force -ErrorAction SilentlyContinue
+    if (Test-Path $target) {
+        try { Rename-Item $target (Split-Path $old -Leaf) -Force }
+        catch { throw "$target lässt sich nicht ersetzen — laufendes kit schliessen und nochmals starten." }
     }
-    catch [System.IO.IOException] {
-        throw "$target ist gesperrt — laufendes kit schliessen (oder kurz warten, falls der Virenscanner prüft) und nochmals starten."
-    }
+    Copy-Item (Join-Path $tmp 'kit.exe') $target
+    Remove-Item $old -Force -ErrorAction SilentlyContinue   # klappt erst, wenn sie nicht mehr gesperrt ist
     Write-Host "Installiert: $target"
 }
 finally {
