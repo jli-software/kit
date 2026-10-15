@@ -39,14 +39,15 @@ try {
     $target = Join-Path $installDir 'kit.exe'
     # Alte Version zuerst beiseite schieben: eine gesperrte oder laufende Exe
     # lässt sich unter Windows nicht überschreiben, wohl aber umbenennen.
-    $old = "$target.old"
-    Remove-Item $old -Force -ErrorAction SilentlyContinue
+    # Eindeutiger Name, weil eine ältere .old-Datei selbst noch gesperrt sein kann.
     if (Test-Path $target) {
-        try { Rename-Item $target (Split-Path $old -Leaf) -Force }
+        $old = "kit.exe.$(Get-Date -Format 'yyyyMMddHHmmss').old"
+        try { Rename-Item $target $old -Force }
         catch { throw "$target lässt sich nicht ersetzen — laufendes kit schliessen und nochmals starten." }
     }
     Copy-Item (Join-Path $tmp 'kit.exe') $target
-    Remove-Item $old -Force -ErrorAction SilentlyContinue   # klappt erst, wenn sie nicht mehr gesperrt ist
+    # Alte Kopien aufräumen; gesperrte bleiben bis zum nächsten Mal liegen
+    Get-ChildItem $installDir -Filter 'kit.exe*.old' | Remove-Item -Force -ErrorAction SilentlyContinue
     Write-Host "Installiert: $target"
 }
 finally {

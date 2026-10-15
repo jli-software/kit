@@ -9,6 +9,7 @@ Alle nennenswerten Änderungen an KIterminal (kit) werden in dieser Datei dokume
 - Bei `-c` landet nur der Befehl in der Zwischenablage, also der erste Codeblock der Antwort.
 - Neuer Modus `terminal` mit eigener Instruction-Datei `terminal.txt`. Default ist Codex/`gpt-6-luna`, auch wenn eine bestehende Config den Modus noch nicht kennt. Der alte Modus `codex` und eine vorhandene `codex.txt` werden nicht mehr verwendet, aber auch nicht gelöscht.
 - Die Langform heisst jetzt `--command`, `--codex` funktioniert weiterhin.
+- `install.ps1`: Die beiseite geschobene alte Exe bekommt einen eindeutigen Namen (`kit.exe.<Zeit>.old`). Vorher scheiterte das Update, wenn eine ältere `kit.exe.old` noch gesperrt war.
 
 ## [0.11.0] — 2026-10-15
 
